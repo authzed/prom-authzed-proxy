@@ -17,7 +17,7 @@ require (
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/prometheus-community/prom-label-proxy v0.3.0
 	github.com/rs/zerolog v1.23.0
-	github.com/spf13/cobra v1.1.3
+	github.com/spf13/cobra v1.2.1
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.39.0
 	gotest.tools v2.2.0+incompatible // indirect
