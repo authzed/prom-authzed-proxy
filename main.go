@@ -17,6 +17,7 @@ import (
 	"github.com/jzelinskie/cobrautil"
 	"github.com/prometheus-community/prom-label-proxy/injectproxy"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -35,6 +36,7 @@ func main() {
 
 	rootCmd.Flags().String("upstream-prom-addr", "", "address of the upstream Prometheus")
 	rootCmd.Flags().String("metrics-addr", ":9090", "address to listen on for the metrics server")
+	rootCmd.Flags().StringSlice("cors-allow-origins", []string{"*"}, "allowed origins for CORS requests")
 
 	rootCmd.Flags().String("local-addr", ":80", "address to listen on for web requests")
 	rootCmd.Flags().String("local-key-path", "", "local path to the TLS key for the proxy server")
@@ -177,9 +179,17 @@ func rootRun(cmd *cobra.Command, args []string) {
 		labelMux:        mux,
 	}
 
-	srv := &http.Server{Handler: handler, Addr: cobrautil.MustGetString(cmd, "local-addr")}
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   cobrautil.MustGetStringSlice(cmd, "cors-allowed-origins"),
+		AllowCredentials: true,
+	}).Handler(handler)
+
+	srv := &http.Server{Handler: corsHandler, Addr: cobrautil.MustGetString(cmd, "local-addr")}
 	go func() {
-		listenMaybeTLS(srv, cobrautil.MustGetString(cmd, "local-cert-path"), cobrautil.MustGetString(cmd, "local-key-path"))
+		listenMaybeTLS(srv,
+			cobrautil.MustGetString(cmd, "local-cert-path"),
+			cobrautil.MustGetString(cmd, "local-key-path"),
+		)
 	}()
 	defer srv.Close()
 

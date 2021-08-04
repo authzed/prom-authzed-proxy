@@ -14,6 +14,7 @@ import (
 	authzedv0 "github.com/authzed/authzed-go/v0"
 	authzedv1 "github.com/authzed/authzed-go/v1alpha1"
 	"github.com/ory/dockertest"
+	"github.com/rs/cors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
@@ -128,7 +129,8 @@ func startForTesting(t *testing.T) (*authzedv0.Client, string) {
 		labelMux:        mux,
 	}
 
-	server := httptest.NewServer(handler)
+	chandler := cors.Default().Handler(handler)
+	server := httptest.NewServer(chandler)
 	t.Cleanup(server.Close)
 
 	return client, server.URL
