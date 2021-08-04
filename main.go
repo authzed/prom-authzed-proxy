@@ -36,7 +36,7 @@ func main() {
 
 	rootCmd.Flags().String("upstream-prom-addr", "", "address of the upstream Prometheus")
 	rootCmd.Flags().String("metrics-addr", ":9090", "address to listen on for the metrics server")
-	rootCmd.Flags().StringSlice("cors-allow-origins", []string{"*"}, "allowed origins for CORS requests")
+	rootCmd.Flags().StringSlice("cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
 
 	rootCmd.Flags().String("local-addr", ":80", "address to listen on for web requests")
 	rootCmd.Flags().String("local-key-path", "", "local path to the TLS key for the proxy server")
