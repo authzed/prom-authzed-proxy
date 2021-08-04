@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"github.com/authzed/grpcutil"
 	"github.com/jzelinskie/cobrautil"
 	"github.com/prometheus-community/prom-label-proxy/injectproxy"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -32,6 +34,7 @@ func main() {
 	}
 
 	rootCmd.Flags().String("upstream-prom-addr", "", "address of the upstream Prometheus")
+	rootCmd.Flags().String("metrics-addr", ":9090", "address to listen on for the metrics server")
 
 	rootCmd.Flags().String("local-addr", ":80", "address to listen on for web requests")
 	rootCmd.Flags().String("local-key-path", "", "local path to the TLS key for the proxy server")
@@ -69,6 +72,21 @@ func listenMaybeTLS(srv *http.Server, certPath, keyPath string) {
 		if err := srv.ListenAndServe(); err != nil {
 			log.Fatal().Err(err).Msg("failed to serve")
 		}
+	}
+}
+
+func newMetricsServer(addr string) *http.Server {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	return &http.Server{
+		Addr:    addr,
+		Handler: mux,
 	}
 }
 
@@ -155,16 +173,22 @@ func rootRun(cmd *cobra.Command, args []string) {
 	}
 
 	srv := &http.Server{Handler: handler, Addr: cobrautil.MustGetString(cmd, "local-addr")}
-
 	go func() {
 		listenMaybeTLS(srv, cobrautil.MustGetString(cmd, "local-cert-path"), cobrautil.MustGetString(cmd, "local-key-path"))
 	}()
+	defer srv.Close()
+
+	metricsrv := newMetricsServer(cobrautil.MustGetString(cmd, "metrics-addr"))
+	go func() {
+		if err := metricsrv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("failed while serving metrics")
+		}
+	}()
+	defer metricsrv.Close()
 
 	signalctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	<-signalctx.Done() // Block until we've received a signal.
-
 	log.Print("Received SIGTERM, exiting gracefully...")
-	srv.Close()
 }
 
 type authzedHandler struct {
