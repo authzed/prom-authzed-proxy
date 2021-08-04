@@ -508,8 +508,8 @@ github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7V
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5/go.mod h1:7Id9E/uU8ce6rXgefFLlgrJj/GYY22cpxn+r32jIOes=
 github.com/jwilder/encoding v0.0.0-20170811194829-b4e1701a28ef/go.mod h1:Ct9fl0F6iIOGgxJ5npU/IUOhOhqlVrGjyIZc8/MagT0=
-github.com/jzelinskie/cobrautil v0.0.1 h1:XNz4uqmvmcz5q8DoXc21KFUyze9HF9rLYJaynP/iTfg=
-github.com/jzelinskie/cobrautil v0.0.1/go.mod h1:SCYgxNGeeBswvNGD0nQ7OTOX93kPxvMy13czgMflbN0=
+github.com/jzelinskie/cobrautil v0.0.2 h1:MOFFogEFxDZInlvIguqO91njWqbyVBuuw4zz/Jvbrfk=
+github.com/jzelinskie/cobrautil v0.0.2/go.mod h1:SCYgxNGeeBswvNGD0nQ7OTOX93kPxvMy13czgMflbN0=
 github.com/jzelinskie/stringz v0.0.0-20210414224931-d6a8ce844a70 h1:thTca5Eyouk5CEcJ75Cbw9CSAGE7TAc6rIi+WgHWpOE=
 github.com/jzelinskie/stringz v0.0.0-20210414224931-d6a8ce844a70/go.mod h1:hHYbgxJuNLRw91CmpuFsYEOyQqpDVFg8pvEh23vy4P0=
 github.com/karrick/godirwalk v1.8.0/go.mod h1:H5KPZjojv4lE+QYImBI8xVtrBRgYrIVsaRPx4tDPEn4=
