@@ -222,6 +222,51 @@ func rootRun(cmd *cobra.Command, args []string) {
 	log.Print("Received SIGTERM, exiting gracefully...")
 }
 
+var reservedResponseHeaders = []string{"Access-Control-Allow-Origin"}
+
+// newFilteredWriter creates a wrapped http.ResponseWriter that resets any header specified
+// in the reservedResponseHeaders slice with the value found when this writer was instantiated.
+func newFilteredWriter(w http.ResponseWriter) *filteredWriter {
+	savedHeaders := map[string][]string{}
+	for _, name := range reservedResponseHeaders {
+		savedHeaders[name] = w.Header().Values(name)
+	}
+
+	return &filteredWriter{
+		w:            w,
+		savedHeaders: savedHeaders,
+	}
+}
+
+type filteredWriter struct {
+	w            http.ResponseWriter
+	savedHeaders map[string][]string
+}
+
+func (s filteredWriter) resetHeaders() {
+	for _, name := range reservedResponseHeaders {
+		s.w.Header().Del(name)
+
+		for _, value := range s.savedHeaders[name] {
+			s.w.Header().Add(name, value)
+		}
+	}
+}
+
+func (s filteredWriter) WriteHeader(code int) {
+	s.resetHeaders()
+	s.w.WriteHeader(code)
+}
+
+func (s filteredWriter) Write(b []byte) (int, error) {
+	s.resetHeaders()
+	return s.w.Write(b)
+}
+
+func (s filteredWriter) Header() http.Header {
+	return s.w.Header()
+}
+
 type authzedHandler struct {
 	client          *authzed.Client
 	objectDefPath   string
@@ -283,5 +328,5 @@ func (ah authzedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Str("queryValue", queryValue).Msg("Check succeeded")
 
 	// Delegate to the label filtering.
-	ah.labelMux.ServeHTTP(w, r)
+	ah.labelMux.ServeHTTP(newFilteredWriter(w), r)
 }

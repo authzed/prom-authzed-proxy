@@ -31,6 +31,9 @@ type catchallHandler struct {
 }
 
 func (ah catchallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "should never appear")
+	w.Header().Add("Another-Header", "hiya")
+	w.Header().Add("Another-Header", "hello")
 	w.WriteHeader(418)
 }
 
@@ -91,6 +94,10 @@ func TestValidToken(t *testing.T) {
 		"dashboard": "foobar",
 	})
 	require.Equal(t, 418, res.StatusCode)
+
+	// Ensure the ACAO was reset, but other headers are passed through.
+	require.Equal(t, "", res.Header.Get("Access-Control-Allow-Origin"))
+	require.Equal(t, []string{"hiya", "hello"}, res.Header.Values("Another-Header"))
 
 	// Check for an incorrect token.
 	res = loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer anothertoken", map[string]string{
