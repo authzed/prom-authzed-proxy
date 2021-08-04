@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus-community/prom-label-proxy/injectproxy"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -179,10 +180,25 @@ func rootRun(cmd *cobra.Command, args []string) {
 		labelMux:        mux,
 	}
 
+	debug := log.Logger.GetLevel() <= zerolog.DebugLevel
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   cobrautil.MustGetStringSlice(cmd, "cors-allowed-origins"),
 		AllowCredentials: true,
+		AllowedHeaders:   []string{"Authorization"},
+		Debug:            debug,
 	}).Handler(handler)
+
+	log.Info().
+		Interface("cors-allowed-origins", cobrautil.MustGetStringSlice(cmd, "cors-allowed-origins")).
+		Str("upstream", upstream).
+		Str("authzed-endpoint", authzedEndpoint).
+		Str("object-def-path", authzedObjectDefinitionPath).
+		Str("permission", authzedPermission).
+		Str("subject-def-path", authzedSubjectDefinitionPath).
+		Str("subject-relation", authzedSubjectRelation).
+		Str("query-parameter", queryParameter).
+		Bool("debug", debug).
+		Msg("Starting proxy server")
 
 	srv := &http.Server{Handler: corsHandler, Addr: cobrautil.MustGetString(cmd, "local-addr")}
 	go func() {
@@ -217,13 +233,15 @@ type authzedHandler struct {
 }
 
 func (ah authzedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	auth := r.Header.Get("Authorization")
+	log.Debug().Str("method", r.Method).Interface("url", r.URL).Bool("has-auth-header", len(auth) > 0).Msg("Got request to proxy")
+
 	queryValue := r.URL.Query().Get(ah.queryParameter)
 	if queryValue == "" {
 		http.Error(w, fmt.Sprintf("Bad request. The %q query parameter must be provided.", ah.queryParameter), http.StatusBadRequest)
 		return
 	}
 
-	auth := r.Header.Get("Authorization")
 	if auth == "" {
 		log.Debug().Msg("No Authorization header found")
 		http.Error(w, fmt.Sprintf("Authorization header is required"), http.StatusUnauthorized)
@@ -261,6 +279,8 @@ func (ah authzedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Authorization failed"), 403)
 		return
 	}
+
+	log.Debug().Str("queryValue", queryValue).Msg("Check succeeded")
 
 	// Delegate to the label filtering.
 	ah.labelMux.ServeHTTP(w, r)
