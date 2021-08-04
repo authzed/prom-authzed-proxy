@@ -43,6 +43,7 @@ func main() {
 	rootCmd.Flags().String("object-id-parameter", "", "the name of the query parameter in incoming calls to use as the object ID in Authzed Check calls")
 
 	rootCmd.Flags().String("authzed-endpoint", "grpc.authzed.com:443", "address of the Authzed to use for checking")
+	rootCmd.Flags().String("authzed-tls-cert-path", "", "path at which to find a certificate for authzed TLS")
 	rootCmd.Flags().String("authzed-token", "", "authzed token to use for checking tenancy")
 	rootCmd.Flags().Bool("authzed-insecure", false, "connect to Authzed without TLS")
 
@@ -126,8 +127,12 @@ func rootRun(cmd *cobra.Command, args []string) {
 		opts = append(opts, grpc.WithInsecure())
 		opts = append(opts, grpcutil.WithInsecureBearerToken(authzedToken))
 	} else {
-		opts = append(opts, authzed.Token(authzedToken))
-		opts = append(opts, authzed.SystemCerts(authzed.VerifyCA))
+		if authzedCertPath := cobrautil.MustGetString(cmd, "authzed-tls-cert-path"); authzedCertPath != "" {
+			opts = append(opts, grpcutil.WithCustomCerts(authzedCertPath, grpcutil.VerifyCA))
+		} else {
+			opts = append(opts, grpcutil.WithSystemCerts(grpcutil.VerifyCA))
+		}
+		opts = append(opts, grpcutil.WithBearerToken(authzedToken))
 	}
 
 	// Create an Authzed client
