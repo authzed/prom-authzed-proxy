@@ -1,7 +1,6 @@
 FROM golang:1.16-alpine3.13 AS build
 
 WORKDIR /go/src/prom-authzed-proxy
-RUN go env -w GOPRIVATE=github.com/REDACTED/code
 
 COPY ./go.mod ./go.sum .
 RUN go mod download
