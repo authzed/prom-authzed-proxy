@@ -105,8 +105,8 @@ github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf/go.mod h1:l
 github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a/go.mod h1:lB+ZfQJz7igIIfQNfa7Ml4HSf2uFQQRzpGGRXenZAgY=
 github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 h1:zV3ejI06GQ59hwDQAvmK1qxOQGB3WuVTRoY0okPTAv0=
 github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496/go.mod h1:oGkLhpf+kjZl6xBf758TQhh5XrAeiJv/7FRz/2spLIg=
-github.com/authzed/authzed-go v0.0.2 h1:7UT+I5BoUSW0yLndXmXfuCxd0x9B0C3GMA33+naqBQw=
-github.com/authzed/authzed-go v0.0.2/go.mod h1:a1qVgqL5pcdZq6EXRciRITz/9KJFHyGhPn3Ng/X2bc0=
+github.com/authzed/authzed-go v0.1.0 h1:+BhlZz4LJ3WEKZnZ9hnILh2ug9L+p/6yah7NjuK99jk=
+github.com/authzed/authzed-go v0.1.0/go.mod h1:a1qVgqL5pcdZq6EXRciRITz/9KJFHyGhPn3Ng/X2bc0=
 github.com/authzed/grpcutil v0.0.0-20210702215403-5fe6e00b4101/go.mod h1:ZWOuCUQ/qoVIAWUctRy/lWHI37OcahRzt5ylELzumus=
 github.com/authzed/grpcutil v0.0.0-20210804144231-370c692019eb h1:6McO4m1m+J5iwvI3LHBd3ohikNyFfeoOPrprUdVqhn0=
 github.com/authzed/grpcutil v0.0.0-20210804144231-370c692019eb/go.mod h1:ZWOuCUQ/qoVIAWUctRy/lWHI37OcahRzt5ylELzumus=
