@@ -31,7 +31,14 @@ If you're using a modern version of [Go], run the following command to install:
 go install github.com/authzed/prom-authzed-proxy
 ```
 
+If you want a container of the proxy and have [docker] installed:
+
+```sh
+docker pull quay.io/authzed/prom-authzed-proxy:latest
+```
+
 [Go]: https://golang.org/dl/
+[docker]: https://www.docker.com/products/docker-desktop
 
 ### Running against localhost
 
