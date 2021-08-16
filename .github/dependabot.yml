@@ -12,4 +12,3 @@ updates:
     interval: "monthly"
   labels:
   - "area/dependencies"
-  - "area/tooling"
