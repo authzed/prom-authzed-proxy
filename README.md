@@ -61,3 +61,11 @@ If the permission check fails, the proxy will return an HTTP 403.
 
 [authzed.com]: https://authzed.com
 [Bearer Token]: https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
+
+## Related Projects
+
+- [Prometheus] - industry standard time series database
+- [prom-label-proxy] - proxy that enforces labels in PromQL
+- [kube-rbac-proxy] - proxy that authorizes requests with Kubernetes cluster RBAC, sometimes used with prom-label-proxy
+
+[kube-rbac-proxy]: https://github.com/brancz/kube-rbac-proxy
