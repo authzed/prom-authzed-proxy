@@ -50,9 +50,9 @@ prom-authzed-proxy \
     --object-id-parameter install \
     --authzed-token tc_client_token_1234deadbeef  \
     --authzed-subject-definition-path psystem/token \
-    --authzed-subject-relation ...
+    --authzed-subject-relation ... \
     --authzed-object-definition-path psystem/prometheus \
-    --authzed-permission viewer \
+    --authzed-permission viewer
 ```
 
 Each request is checked to have a value as a [Bearer Token] that is a `viewer` of the value in the PromQL label `install` with their respective Authzed Object Types.
