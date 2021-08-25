@@ -1,6 +1,6 @@
 # prom-authzed-proxy
 
-[![Container Repository on Quay.io](https://quay.io/repository/authzed/prom-authzed-proxy/status "Docker Repository on Quay.io")](https://quay.io/repository/authzed/prom-authzed-proxy)
+[![Container Image](https://img.shields.io/github/v/release/authzed/prom-authzed-proxy?color=%232496ED&label=container&logo=docker "Container Image")](https://quay.io/repository/authzed/prom-authzed-proxy)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 [![Build Status](https://github.com/authzed/prom-authzed-proxy/workflows/Build%20&%20Test/badge.svg)](https://github.com/authzed/prom-authzed-proxy/actions)
 [![Mailing List](https://img.shields.io/badge/email-google%20groups-4285F4)](https://groups.google.com/g/authzed-oss)
