@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine3.13 AS build
+FROM golang:1.17.1-alpine3.13 AS build
 
 WORKDIR /go/src/prom-authzed-proxy
 
