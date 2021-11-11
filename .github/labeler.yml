@@ -1,13 +1,14 @@
+---
 area/dependencies:
-- "Dockerfile"
-- "go.mod"
-- "go.sum"
+  - "Dockerfile"
+  - "go.mod"
+  - "go.sum"
 area/tooling:
-- ".github/**/*"
-- "Dockerfile"
+  - ".github/**/*"
+  - "Dockerfile"
 area/docs:
-- "CODE-OF-CONDUCT.md"
-- "CONTRIBUTING.md"
-- "DCO"
-- "LICENSE"
-- "README.md"
+  - "CODE-OF-CONDUCT.md"
+  - "CONTRIBUTING.md"
+  - "DCO"
+  - "LICENSE"
+  - "README.md"
