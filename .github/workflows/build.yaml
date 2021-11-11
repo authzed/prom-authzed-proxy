@@ -28,11 +28,12 @@ jobs:
         run: "go mod tidy && bash -c '[ $(git status --porcelain | tee /dev/fd/2 | wc -c) -eq 0 ]'"
       - name: "Formatting (gofumpt)"
         run: |
-          GOFUMPT_OUTPUT="$(gofumports -d .)"
+          GOFUMPT_OUTPUT="$(find . -iname '*.go' -type f | xargs gofumports -d)"
           if [ -n "$GOFUMPT_OUTPUT" ]; then
             echo "All the following files are not correctly formatted"
             echo "${GOFUMPT_OUTPUT}"
-          exit 1
+            exit 1
+          fi
       - uses: "golangci/golangci-lint-action@v2"
         with:
           version: "v1.43"
