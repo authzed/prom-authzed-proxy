@@ -27,7 +27,7 @@ import (
 const (
 	flagPrefixZerolog = "log"
 	flagPrefixMetrics = "metrics"
-	flagPrefixHttp    = "http"
+	flagPrefixHTTP    = "http"
 )
 
 func main() {
@@ -43,9 +43,9 @@ func main() {
 
 	cobrautil.RegisterZeroLogFlags(rootCmd.Flags(), flagPrefixZerolog)
 	cobrautil.RegisterHttpServerFlags(rootCmd.Flags(), flagPrefixMetrics, "metrics", ":9090", true)
-	cobrautil.RegisterHttpServerFlags(rootCmd.Flags(), flagPrefixHttp, "http", ":8443", true)
+	cobrautil.RegisterHttpServerFlags(rootCmd.Flags(), flagPrefixHTTP, "http", ":8443", true)
 
-	rootCmd.Flags().StringSlice(flagPrefixHttp+"-cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
+	rootCmd.Flags().StringSlice(flagPrefixHTTP+"-cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
 	rootCmd.Flags().String("upstream-prom-addr", "", "address of the upstream Prometheus")
 	rootCmd.Flags().String("object-id-parameter", "", "the name of the query parameter in incoming calls to use as the object ID in Authzed Check calls")
 
@@ -58,7 +58,7 @@ func main() {
 	rootCmd.Flags().String("authzed-subject-definition-path", "", "full subject definition path in Authzed to check")
 	rootCmd.Flags().String("authzed-subject-relation", "", "subject relation in Authzed to check. Defaults to ...")
 
-	rootCmd.Execute()
+	_ = rootCmd.Execute()
 }
 
 func metricsHandler() http.Handler {
@@ -178,10 +178,10 @@ func rootRun(cmd *cobra.Command, args []string) {
 		Bool("debug", debug).
 		Msg("Starting proxy server")
 
-	srv := cobrautil.HttpServerFromFlags(cmd, flagPrefixHttp)
+	srv := cobrautil.HttpServerFromFlags(cmd, flagPrefixHTTP)
 	srv.Handler = corsHandler
 	go func() {
-		if err := cobrautil.HttpListenFromFlags(cmd, flagPrefixHttp, srv, zerolog.InfoLevel); err != nil {
+		if err := cobrautil.HttpListenFromFlags(cmd, flagPrefixHTTP, srv, zerolog.InfoLevel); err != nil {
 			log.Fatal().Err(err).Msg("failed while serving http")
 		}
 	}()
@@ -268,13 +268,13 @@ func (ah authzedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if auth == "" {
 		log.Debug().Msg("No Authorization header found")
-		http.Error(w, fmt.Sprintf("Authorization header is required"), http.StatusUnauthorized)
+		http.Error(w, "Authorization header is required", http.StatusUnauthorized)
 		return
 	}
 
 	if !strings.HasPrefix(auth, "Bearer ") {
 		log.Debug().Msg("Invalid Authorization header found")
-		http.Error(w, fmt.Sprintf("A Bearer token is required"), 403)
+		http.Error(w, "A Bearer token is required", 403)
 		return
 	}
 
@@ -296,13 +296,13 @@ func (ah authzedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		log.Warn().Err(err).Str("queryValue", queryValue).Msg("Error when attempting to check permission")
-		http.Error(w, fmt.Sprintf("Upsteam service error"), http.StatusServiceUnavailable)
+		http.Error(w, "Upsteam service error", http.StatusServiceUnavailable)
 		return
 	}
 
 	if resp.Permissionship != v1.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
 		log.Info().Str("queryValue", queryValue).Msg("Check failed")
-		http.Error(w, fmt.Sprintf("Authorization failed"), 403)
+		http.Error(w, "Authorization failed", 403)
 		return
 	}
 

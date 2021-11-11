@@ -12,30 +12,29 @@ jobs:
     name: "Lint"
     runs-on: "ubuntu-latest"
     steps:
-    - uses: "actions/checkout@v2"
     - uses: "actions/setup-go@v2"
       with:
         go-version: "^1.16"
-    - name: "Go Mod Tidy"
+    - name: "Install linting tools"
       run: |
-        GO_MOD_OUPUT="$(go mod tidy -v 2>&1)"
-        if [[ $GO_MOD_OUPUT == *"unused"* ]]; then
-          echo "${GO_MOD_OUPUT}"
-          exit 1
-        fi
+        # This is done before checking out, as to not modify go.mod
+        go install mvdan.cc/gofumpt/gofumports@v0.1.1
+    - uses: "actions/checkout@v2"
+    - name: "Go Mod Tidy"
+      run: "go mod tidy && bash -c '[ $(git status --porcelain | tee /dev/fd/2 | wc -c) -eq 0 ]'"
     - name: "Formatting (gofumpt)"
       run: |
-        go install mvdan.cc/gofumpt/gofumports@latest
         GOFUMPT_OUTPUT="$(gofumports -d .)"
         if [ -n "$GOFUMPT_OUTPUT" ]; then
           echo "All the following files are not correctly formatted"
           echo "${GOFUMPT_OUTPUT}"
-          exit 1
-        fi
-    - name: "Linting (revive)"
-      run: |
-        go install github.com/mgechev/revive@latest
-        revive ./...
+        exit 1
+    - uses: "golangci/golangci-lint-action@v2"
+      with:
+        version: "v1.43"
+        skip-go-installation: true
+        skip-pkg-cache: true
+        skip-build-cache: false
   test:
     name: "Test"
     runs-on: "ubuntu-latest"
