@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	v0 "github.com/authzed/authzed-go/proto/authzed/api/v0"
-	"github.com/authzed/authzed-go/v0"
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
+	"github.com/authzed/authzed-go/v1"
 	"github.com/authzed/grpcutil"
 	"github.com/jzelinskie/cobrautil"
 	"github.com/prometheus-community/prom-label-proxy/injectproxy"
@@ -56,7 +56,7 @@ func main() {
 	rootCmd.Flags().String("authzed-object-definition-path", "", "full object definition path in Authzed to check")
 	rootCmd.Flags().String("authzed-permission", "", "permission in Authzed to check")
 	rootCmd.Flags().String("authzed-subject-definition-path", "", "full subject definition path in Authzed to check")
-	rootCmd.Flags().String("authzed-subject-relation", "...", "subject relation in Authzed to check. Defaults to ...")
+	rootCmd.Flags().String("authzed-subject-relation", "", "subject relation in Authzed to check. Defaults to ...")
 
 	rootCmd.Execute()
 }
@@ -280,17 +280,19 @@ func (ah authzedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	subjectID := strings.TrimPrefix(auth, "Bearer ")
 
-	resp, err := ah.client.Check(r.Context(), &v0.CheckRequest{
-		TestUserset: &v0.ObjectAndRelation{
-			Namespace: ah.objectDefPath,
-			ObjectId:  queryValue,
-			Relation:  ah.permission,
+	resp, err := ah.client.CheckPermission(r.Context(), &v1.CheckPermissionRequest{
+		Resource: &v1.ObjectReference{
+			ObjectType: ah.objectDefPath,
+			ObjectId:   queryValue,
 		},
-		User: &v0.User{UserOneof: &v0.User_Userset{Userset: &v0.ObjectAndRelation{
-			Namespace: ah.subjectDefPath,
-			ObjectId:  subjectID,
-			Relation:  ah.subjectRelation,
-		}}},
+		Permission: ah.permission,
+		Subject: &v1.SubjectReference{
+			Object: &v1.ObjectReference{
+				ObjectType: ah.subjectDefPath,
+				ObjectId:   subjectID,
+			},
+			OptionalRelation: ah.subjectRelation,
+		},
 	})
 	if err != nil {
 		log.Warn().Err(err).Str("queryValue", queryValue).Msg("Error when attempting to check permission")
@@ -298,7 +300,7 @@ func (ah authzedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if resp.GetMembership() != v0.CheckResponse_MEMBER {
+	if resp.Permissionship != v1.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
 		log.Info().Str("queryValue", queryValue).Msg("Check failed")
 		http.Error(w, fmt.Sprintf("Authorization failed"), 403)
 		return

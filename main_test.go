@@ -9,10 +9,8 @@ import (
 	"testing"
 	"time"
 
-	v0 "github.com/authzed/authzed-go/proto/authzed/api/v0"
-	"github.com/authzed/authzed-go/proto/authzed/api/v1alpha1"
-	authzedv0 "github.com/authzed/authzed-go/v0"
-	authzedv1 "github.com/authzed/authzed-go/v1alpha1"
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
+	"github.com/authzed/authzed-go/v1"
 	"github.com/ory/dockertest"
 	"github.com/rs/cors"
 	"github.com/stretchr/testify/require"
@@ -71,18 +69,23 @@ func TestValidToken(t *testing.T) {
 	client, serverURL := startForTesting(t)
 
 	// Add a relation to make the permission valid.
-	_, err := client.Write(context.Background(), &v0.WriteRequest{
-		Updates: []*v0.RelationTupleUpdate{
-			{
-				Operation: v0.RelationTupleUpdate_CREATE,
-				Tuple: &v0.RelationTuple{
-					ObjectAndRelation: &v0.ObjectAndRelation{Namespace: "test/dashboard", ObjectId: "foobar", Relation: "viewer"},
-					User: &v0.User{UserOneof: &v0.User_Userset{
-						Userset: &v0.ObjectAndRelation{Namespace: "test/token", ObjectId: "sometoken", Relation: "..."},
-					}},
+	_, err := client.WriteRelationships(context.Background(), &v1.WriteRelationshipsRequest{
+		Updates: []*v1.RelationshipUpdate{{
+			Operation: v1.RelationshipUpdate_OPERATION_CREATE,
+			Relationship: &v1.Relationship{
+				Resource: &v1.ObjectReference{
+					ObjectType: "test/dashboard",
+					ObjectId:   "foobar",
+				},
+				Relation: "viewer",
+				Subject: &v1.SubjectReference{
+					Object: &v1.ObjectReference{
+						ObjectType: "test/token",
+						ObjectId:   "sometoken",
+					},
 				},
 			},
-		},
+		}},
 	})
 	require.NoError(t, err)
 
@@ -112,7 +115,7 @@ func TestValidToken(t *testing.T) {
 	require.Equal(t, 403, res.StatusCode)
 }
 
-func startForTesting(t *testing.T) (*authzedv0.Client, string) {
+func startForTesting(t *testing.T) (*authzed.Client, string) {
 	tester, err := newTester(zedTestServerContainer, 50051)
 	require.NoError(t, err)
 	t.Cleanup(tester.cleanup)
@@ -123,7 +126,7 @@ func startForTesting(t *testing.T) (*authzedv0.Client, string) {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
 
-	client, err := authzedv0.NewClient(fmt.Sprintf("localhost:%s", tester.port), opts...)
+	client, err := authzed.NewClient(fmt.Sprintf("localhost:%s", tester.port), opts...)
 	require.NoError(t, err)
 
 	handler := authzedHandler{
@@ -131,7 +134,7 @@ func startForTesting(t *testing.T) (*authzedv0.Client, string) {
 		objectDefPath:   "test/dashboard",
 		permission:      "view",
 		subjectDefPath:  "test/token",
-		subjectRelation: "...",
+		subjectRelation: "",
 		queryParameter:  "dashboard",
 		labelMux:        mux,
 	}
@@ -202,13 +205,13 @@ func newTester(containerOpts *dockertest.RunOptions, portNum uint16) (*testHandl
 		opts = append(opts, grpc.WithInsecure())
 
 		// Create an Authzed client
-		client, err := authzedv1.NewClient(fmt.Sprintf("localhost:%s", port), opts...)
+		client, err := authzed.NewClient(fmt.Sprintf("localhost:%s", port), opts...)
 		if err != nil {
 			return nil, fmt.Errorf("Could not create client: %w", err)
 		}
 
 		// Write a basic schema.
-		_, err = client.WriteSchema(context.Background(), &v1alpha1.WriteSchemaRequest{
+		_, err = client.WriteSchema(context.Background(), &v1.WriteSchemaRequest{
 			Schema: `definition test/token {}
 
 definition test/dashboard {
