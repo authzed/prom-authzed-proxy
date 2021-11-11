@@ -24,62 +24,44 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	flagPrefixZerolog = "log"
+	flagPrefixMetrics = "metrics"
+	flagPrefixHttp    = "http"
+)
+
 func main() {
 	rootCmd := &cobra.Command{
 		Use:   "prom-authzed-proxy",
 		Short: "Proxy that gates access to Prometheus based on an Authzed Check call",
 		PreRunE: cobrautil.CommandStack(
 			cobrautil.SyncViperPreRunE("prom-authzed-proxy"),
-			cobrautil.ZeroLogPreRunE,
+			cobrautil.ZeroLogPreRunE(flagPrefixZerolog, zerolog.InfoLevel),
 		),
 		Run: rootRun,
 	}
 
+	cobrautil.RegisterZeroLogFlags(rootCmd.Flags(), flagPrefixZerolog)
+	cobrautil.RegisterHttpServerFlags(rootCmd.Flags(), flagPrefixMetrics, "metrics", ":9090", true)
+	cobrautil.RegisterHttpServerFlags(rootCmd.Flags(), flagPrefixHttp, "http", ":8443", true)
+
+	rootCmd.Flags().StringSlice(flagPrefixHttp+"-cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
 	rootCmd.Flags().String("upstream-prom-addr", "", "address of the upstream Prometheus")
-	rootCmd.Flags().String("metrics-addr", ":9090", "address to listen on for the metrics server")
-	rootCmd.Flags().StringSlice("cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
-
-	rootCmd.Flags().String("local-addr", ":80", "address to listen on for web requests")
-	rootCmd.Flags().String("local-key-path", "", "local path to the TLS key for the proxy server")
-	rootCmd.Flags().String("local-cert-path", "", "local path to the TLS certificate for the proxy server")
-
 	rootCmd.Flags().String("object-id-parameter", "", "the name of the query parameter in incoming calls to use as the object ID in Authzed Check calls")
 
 	rootCmd.Flags().String("authzed-endpoint", "grpc.authzed.com:443", "address of the Authzed to use for checking")
 	rootCmd.Flags().String("authzed-tls-cert-path", "", "path at which to find a certificate for authzed TLS")
 	rootCmd.Flags().String("authzed-token", "", "authzed token to use for checking tenancy")
 	rootCmd.Flags().Bool("authzed-insecure", false, "connect to Authzed without TLS")
-
 	rootCmd.Flags().String("authzed-object-definition-path", "", "full object definition path in Authzed to check")
 	rootCmd.Flags().String("authzed-permission", "", "permission in Authzed to check")
-
 	rootCmd.Flags().String("authzed-subject-definition-path", "", "full subject definition path in Authzed to check")
 	rootCmd.Flags().String("authzed-subject-relation", "...", "subject relation in Authzed to check. Defaults to ...")
-
-	cobrautil.RegisterZeroLogFlags(rootCmd.Flags())
 
 	rootCmd.Execute()
 }
 
-func listenMaybeTLS(srv *http.Server, certPath, keyPath string) {
-	if certPath != "" && keyPath != "" {
-		log.Info().
-			Str("addr", srv.Addr).
-			Str("certPath", certPath).
-			Str("keyPath", keyPath).
-			Msg("listening over HTTPS")
-		if err := srv.ListenAndServeTLS(certPath, keyPath); err != nil {
-			log.Fatal().Err(err).Msg("failed to serve")
-		}
-	} else {
-		log.Info().Str("addr", srv.Addr).Msg("server listening over HTTP")
-		if err := srv.ListenAndServe(); err != nil {
-			log.Fatal().Err(err).Msg("failed to serve")
-		}
-	}
-}
-
-func newMetricsServer(addr string) *http.Server {
+func metricsHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -87,11 +69,7 @@ func newMetricsServer(addr string) *http.Server {
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-
-	return &http.Server{
-		Addr:    addr,
-		Handler: mux,
-	}
+	return mux
 }
 
 func rootRun(cmd *cobra.Command, args []string) {
@@ -200,22 +178,23 @@ func rootRun(cmd *cobra.Command, args []string) {
 		Bool("debug", debug).
 		Msg("Starting proxy server")
 
-	srv := &http.Server{Handler: corsHandler, Addr: cobrautil.MustGetString(cmd, "local-addr")}
+	srv := cobrautil.HttpServerFromFlags(cmd, flagPrefixHttp)
+	srv.Handler = corsHandler
 	go func() {
-		listenMaybeTLS(srv,
-			cobrautil.MustGetString(cmd, "local-cert-path"),
-			cobrautil.MustGetString(cmd, "local-key-path"),
-		)
+		if err := cobrautil.HttpListenFromFlags(cmd, flagPrefixHttp, srv, zerolog.InfoLevel); err != nil {
+			log.Fatal().Err(err).Msg("failed while serving http")
+		}
 	}()
 	defer srv.Close()
 
-	metricsrv := newMetricsServer(cobrautil.MustGetString(cmd, "metrics-addr"))
+	metricsSrv := cobrautil.HttpServerFromFlags(cmd, flagPrefixMetrics)
+	metricsSrv.Handler = metricsHandler()
 	go func() {
-		if err := metricsrv.ListenAndServe(); err != http.ErrServerClosed {
+		if err := cobrautil.HttpListenFromFlags(cmd, flagPrefixMetrics, metricsSrv, zerolog.InfoLevel); err != nil {
 			log.Fatal().Err(err).Msg("failed while serving metrics")
 		}
 	}()
-	defer metricsrv.Close()
+	defer metricsSrv.Close()
 
 	signalctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	<-signalctx.Done() // Block until we've received a signal.
