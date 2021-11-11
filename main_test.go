@@ -20,9 +20,9 @@ import (
 )
 
 var zedTestServerContainer = &dockertest.RunOptions{
-	Repository:   "quay.io/authzed/zed-testserver",
+	Repository:   "quay.io/authzed/spicedb",
 	Tag:          "latest",
-	Cmd:          []string{"run"},
+	Cmd:          []string{"serve-testing"},
 	ExposedPorts: []string{"50051/tcp"},
 }
 
