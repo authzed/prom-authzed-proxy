@@ -9,7 +9,7 @@ require (
 	github.com/authzed/authzed-go v0.2.0
 	github.com/authzed/grpcutil v0.0.0-20210913124023-cad23ae5a9e8
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
-	github.com/jzelinskie/cobrautil v0.0.2
+	github.com/jzelinskie/cobrautil v0.0.7
 	github.com/opencontainers/runc v1.0.1 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/prometheus-community/prom-label-proxy v0.4.0
