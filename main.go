@@ -135,10 +135,10 @@ func rootRunE(cmd *cobra.Command, args []string) error {
 		authzedClient,
 		labelProxyHandler,
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-resource-type"),
+		cobrautil.MustGetStringExpanded(cmd, "proxy-check-resource-id-query-param"),
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-permission"),
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-subject-type"),
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-subject-relation"),
-		cobrautil.MustGetStringExpanded(cmd, "proxy-check-resource-id-query-param"),
 	)))
 	go func() {
 		if err := cobrautil.HttpListenFromFlags(cmd, proxyPrefix, proxySrv, zerolog.InfoLevel); err != nil {
