@@ -6,7 +6,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.0 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
-	github.com/authzed/authzed-go v0.2.0
+	github.com/authzed/authzed-go v0.4.1
 	github.com/authzed/grpcutil v0.0.0-20210913124023-cad23ae5a9e8
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/jzelinskie/cobrautil v0.0.2
