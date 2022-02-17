@@ -14,6 +14,7 @@ import (
 	"github.com/ory/dockertest"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var zedTestServerContainer = &dockertest.RunOptions{
@@ -126,7 +127,7 @@ func startForTesting(t *testing.T) (*authzedv1.Client, string) {
 	mux.Handle("/", catchallHandler{t})
 
 	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	client, err := authzedv1.NewClient(fmt.Sprintf("localhost:%s", tester.port), opts...)
 	require.NoError(t, err)
@@ -203,7 +204,7 @@ func newTester(containerOpts *dockertest.RunOptions, portNum uint16) (*testHandl
 		time.Sleep(10 * time.Millisecond)
 
 		var opts []grpc.DialOption
-		opts = append(opts, grpc.WithInsecure())
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 		// Create an Authzed client
 		client, err := authzedv1.NewClient(fmt.Sprintf("localhost:%s", port), opts...)

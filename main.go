@@ -24,6 +24,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -46,23 +47,23 @@ func main() {
 	rootCmd.Flags().StringSlice("proxy-cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
 
 	rootCmd.Flags().String("proxy-upstream-prometheus-addr", "", "address of the upstream Prometheus")
-	cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-upstream-prometheus-addr")
+	_ = cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-upstream-prometheus-addr")
 
 	rootCmd.Flags().Bool("proxy-spicedb-insecure", false, "connect to Authzed without TLS")
 	rootCmd.Flags().String("proxy-spicedb-endpoint", "grpc.authzed.com:443", "address of the Authzed to use for checking")
 	rootCmd.Flags().String("proxy-spicedb-tls-cert-path", "", "path at which to find a certificate for authzed TLS")
-	rootCmd.Flags().String("proxy-spicedb-token", "", "authzed token to use for checking tenancy")
-	cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-spicedb-token")
+	rootCmd.Flags().String("proxy-spicedb-token", "", "authzed/spicedb token to use for checking tenancy")
+	_ = cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-spicedb-token")
 
 	rootCmd.Flags().String("proxy-check-resource-type", "", "resource type to check")
 	rootCmd.Flags().String("proxy-check-resource-id-query-param", "", "query parameter used as the Object ID to check")
 	rootCmd.Flags().String("proxy-check-permission", "", "permission to check")
 	rootCmd.Flags().String("proxy-check-subject-type", "", "subject type to check")
 	rootCmd.Flags().String("proxy-check-subject-relation", "", "optional subject relation to check")
-	cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-resource-type")
-	cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-resource-id-query-param")
-	cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-permission")
-	cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-subject-type")
+	_ = cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-resource-type")
+	_ = cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-resource-id-query-param")
+	_ = cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-permission")
+	_ = cobra.MarkFlagRequired(rootCmd.Flags(), "proxy-check-subject-type")
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -80,9 +81,9 @@ func metricsHandler() http.Handler {
 	return mux
 }
 
-func spiceDBDialOpts(token, optionalCertPath string, insecure bool) (opts []grpc.DialOption) {
-	if insecure {
-		opts = append(opts, grpc.WithInsecure())
+func spiceDBAuthnDialOpts(token, optionalCertPath string, insecureConn bool) (opts []grpc.DialOption) {
+	if insecureConn {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		opts = append(opts, grpcutil.WithInsecureBearerToken(token))
 	} else {
 		if optionalCertPath != "" {
@@ -115,7 +116,7 @@ func rootRunE(cmd *cobra.Command, args []string) error {
 
 	authzedClient, err := authzed.NewClient(
 		cobrautil.MustGetStringExpanded(cmd, "proxy-spicedb-endpoint"),
-		spiceDBDialOpts(
+		spiceDBAuthnDialOpts(
 			cobrautil.MustGetString(cmd, "proxy-spicedb-token"),
 			cobrautil.MustGetString(cmd, "proxy-spicedb-tls-cert-path"),
 			cobrautil.MustGetBool(cmd, "proxy-spicedb-insecure"),
@@ -205,6 +206,7 @@ func proxyHandler(
 			},
 		})
 		if err != nil {
+			log.Err(err).Msg("upstream failure")
 			http.Error(w, "upsteam failure", http.StatusServiceUnavailable)
 			return
 		}
