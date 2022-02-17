@@ -26,3 +26,5 @@ jobs:
         tags: |
           quay.io/authzed/prom-authzed-proxy:latest
           quay.io/authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
+          ghcr.io/authzed/prom-authzed-proxy:latest
+          ghcr.io/authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
