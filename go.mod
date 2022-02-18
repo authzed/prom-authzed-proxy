@@ -10,7 +10,7 @@ require (
 	github.com/authzed/grpcutil v0.0.0-20210913124023-cad23ae5a9e8
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
-	github.com/jzelinskie/cobrautil v0.0.7
+	github.com/jzelinskie/cobrautil v0.0.8
 	github.com/jzelinskie/stringz v0.0.1
 	github.com/opencontainers/runc v1.0.1 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
@@ -22,7 +22,6 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.10.1 // indirect
 	github.com/stretchr/testify v1.7.0
-	go.opentelemetry.io/otel/exporters/jaeger v1.3.0 // indirect
 	golang.org/x/net v0.0.0-20220105145211-5b0dc2dfae98 // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368 // indirect
