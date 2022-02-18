@@ -16,7 +16,7 @@ require (
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/prometheus-community/prom-label-proxy v0.4.0
 	github.com/prometheus/client_golang v1.11.0
-	github.com/rs/cors v1.8.0
+	github.com/rs/cors v1.8.2
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/afero v1.8.0 // indirect
 	github.com/spf13/cobra v1.3.0
