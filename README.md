@@ -7,11 +7,14 @@
 [![Discord Server](https://img.shields.io/discord/844600078504951838?color=7289da&logo=discord "Discord Server")](https://discord.gg/jTysUaxXzM)
 [![Twitter](https://img.shields.io/twitter/follow/authzed?color=%23179CF0&logo=twitter&style=flat-square)](https://twitter.com/authzed)
 
-prom-authzed-proxy is a proxy for [Prometheus] that authorizes the request's [Bearer Token] with [Authzed] and enforces a label in a PromQL query.
+prom-authzed-proxy is a proxy for [Prometheus] that authorizes the request's [Bearer Token] with [Authzed] or [SpiceDB] and enforces a label in a PromQL query.
 
-[Authzed] is a database and service that stores, computes, and validates your application's permissions.
+[SpiceDB] is a database system for managing security-critical permissions checking.
 
-Developers create a schema that models their permissions requirements and use a client library, such as this one, to apply the schema to the database, insert data into the database, and query the data to efficiently check permissions in their applications.
+SpiceDB acts as a centralized service that stores authorization data.
+Once stored, data can be performantly queried to answer questions such as "Does this user have access to this resource?" and "What are all the resources this user has access to?".
+
+[Authzed] operates the globally available, serverless database platform for SpiceDB.
 
 See [CONTRIBUTING.md] for instructions on how to contribute and perform common tasks like building the project and running tests.
 
@@ -19,6 +22,7 @@ See [CONTRIBUTING.md] for instructions on how to contribute and perform common t
 [prom-label-proxy]: https://github.com/prometheus-community/prom-label-proxy
 [Bearer Token]: https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
 [Authzed]: https://authzed.com
+[SpiceDB]: https://github.com/authzed/spicedb
 [CONTRIBUTING.md]: CONTRIBUTING.md
 
 ## Basic Usage
@@ -34,7 +38,7 @@ go install github.com/authzed/prom-authzed-proxy
 If you want a container of the proxy and have [docker] installed:
 
 ```sh
-docker pull quay.io/authzed/prom-authzed-proxy:latest
+docker pull ghcr.io/authzed/prom-authzed-proxy:latest
 ```
 
 [Go]: https://golang.org/dl/
@@ -46,16 +50,15 @@ The following command will run the proxy that checks the permissions against [au
 
 ```sh
 prom-authzed-proxy \
-    --upstream-prom-addr http://localhost:9090 \
-    --object-id-parameter install \
-    --authzed-token tc_client_token_1234deadbeef  \
-    --authzed-subject-definition-path psystem/token \
-    --authzed-subject-relation ... \
-    --authzed-object-definition-path psystem/prometheus \
-    --authzed-permission viewer
+    --proxy-upstream-prometheus-addr http://localhost:9090 \
+    --proxy-spicedb-token tc_client_token_1234deadbeef  \
+    --proxy-check-resource-type psystem/prometheus \
+    --proxy-check-resource-id-query-param install \
+    --proxy-check-permission view
+    --proxy-check-subject-type psystem/token \
 ```
 
-Each request is checked to have a value as a [Bearer Token] that is a `viewer` of the value in the PromQL label `install` with their respective Authzed Object Types.
+Each request is checked to have a value as a [Bearer Token] that has the `view` permission for the resource specified in the PromQL label `install` with their respective types.
 
 If the permission check fails, the proxy will return an HTTP 403.
 
@@ -65,7 +68,9 @@ If the permission check fails, the proxy will return an HTTP 403.
 ## Related Projects
 
 - [Prometheus] - industry standard time series database
+- [SpiceDB] - industry standard permissions database
 - [prom-label-proxy] - proxy that enforces labels in PromQL
 - [kube-rbac-proxy] - proxy that authorizes requests with Kubernetes cluster RBAC, sometimes used with prom-label-proxy
 
 [kube-rbac-proxy]: https://github.com/brancz/kube-rbac-proxy
+[SpiceDB]: https://github.com/authzed/spicedb
