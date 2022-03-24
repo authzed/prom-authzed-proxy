@@ -33,17 +33,17 @@ func main() {
 		Short:   "Proxy that protects Prometheus queries with SpiceDB",
 		PreRunE: cobrautil.SyncViperPreRunE("prom-authzed-proxy"),
 		RunE: cobrautil.CommandStack(
-			cobrautil.ZeroLogPreRunE("log", zerolog.InfoLevel),
-			cobrautil.OpenTelemetryPreRunE("otel", zerolog.InfoLevel),
+			cobrautil.ZeroLogRunE("log", zerolog.InfoLevel),
+			cobrautil.OpenTelemetryRunE("otel", zerolog.InfoLevel),
 			rootRunE,
 		),
 	}
 
 	cobrautil.RegisterZeroLogFlags(rootCmd.Flags(), "log")
 	cobrautil.RegisterOpenTelemetryFlags(rootCmd.Flags(), "otel", "prom-authzed-proxy")
-	cobrautil.RegisterHttpServerFlags(rootCmd.Flags(), "metrics", "metrics", ":9091", true)
+	cobrautil.RegisterHTTPServerFlags(rootCmd.Flags(), "metrics", "metrics", ":9091", true)
 
-	cobrautil.RegisterHttpServerFlags(rootCmd.Flags(), "proxy", "proxy", ":9090", true)
+	cobrautil.RegisterHTTPServerFlags(rootCmd.Flags(), "proxy", "proxy", ":9090", true)
 	rootCmd.Flags().StringSlice("proxy-cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
 
 	rootCmd.Flags().String("proxy-upstream-prometheus-addr", "", "address of the upstream Prometheus")
@@ -126,7 +126,7 @@ func rootRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	const proxyPrefix = "proxy"
-	proxySrv := cobrautil.HttpServerFromFlags(cmd, proxyPrefix)
+	proxySrv := cobrautil.HTTPServerFromFlags(cmd, proxyPrefix)
 	proxySrv.Handler = logHandler(cors.New(cors.Options{
 		AllowedOrigins:   cobrautil.MustGetStringSlice(cmd, "proxy-cors-allowed-origins"),
 		AllowCredentials: true,
@@ -142,17 +142,17 @@ func rootRunE(cmd *cobra.Command, args []string) error {
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-subject-relation"),
 	)))
 	go func() {
-		if err := cobrautil.HttpListenFromFlags(cmd, proxyPrefix, proxySrv, zerolog.InfoLevel); err != nil {
+		if err := cobrautil.HTTPListenFromFlags(cmd, proxyPrefix, proxySrv, zerolog.InfoLevel); err != nil {
 			log.Fatal().Err(err).Msg("failed while serving proxy")
 		}
 	}()
 	defer proxySrv.Close()
 
 	const metricsPrefix = "metrics"
-	metricsSrv := cobrautil.HttpServerFromFlags(cmd, metricsPrefix)
+	metricsSrv := cobrautil.HTTPServerFromFlags(cmd, metricsPrefix)
 	metricsSrv.Handler = metricsHandler()
 	go func() {
-		if err := cobrautil.HttpListenFromFlags(cmd, metricsPrefix, metricsSrv, zerolog.InfoLevel); err != nil {
+		if err := cobrautil.HTTPListenFromFlags(cmd, metricsPrefix, metricsSrv, zerolog.InfoLevel); err != nil {
 			log.Fatal().Err(err).Msg("failed while serving metrics")
 		}
 	}()
