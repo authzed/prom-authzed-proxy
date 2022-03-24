@@ -38,6 +38,7 @@ func (ah catchallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func TestMissingQueryParameter(t *testing.T) {
 	_, serverURL := startForTesting(t)
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "", map[string]string{})
+	defer res.Body.Close()
 	require.Equal(t, 401, res.StatusCode)
 }
 
@@ -46,6 +47,7 @@ func TestMissingAuthHeader(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "", map[string]string{
 		"dashboard": "foobar",
 	})
+	defer res.Body.Close()
 	require.Equal(t, 401, res.StatusCode)
 }
 
@@ -54,6 +56,7 @@ func TestInvalidAuthHeader(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Basic Foo", map[string]string{
 		"dashboard": "foobar",
 	})
+	defer res.Body.Close()
 	require.Equal(t, 401, res.StatusCode)
 }
 
@@ -62,6 +65,7 @@ func TestInvalidToken(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer sometoken", map[string]string{
 		"dashboard": "foobar",
 	})
+	defer res.Body.Close()
 	require.Equal(t, 403, res.StatusCode)
 }
 
@@ -99,6 +103,7 @@ func TestValidToken(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer sometoken", map[string]string{
 		"dashboard": "foobar",
 	})
+	defer res.Body.Close()
 	require.Equal(t, 418, res.StatusCode)
 
 	// Ensure the ACAO was reset, but other headers are passed through.
@@ -109,12 +114,14 @@ func TestValidToken(t *testing.T) {
 	res = loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer anothertoken", map[string]string{
 		"dashboard": "foobar",
 	})
+	defer res.Body.Close()
 	require.Equal(t, 403, res.StatusCode)
 
 	// Check for another dashboard
 	res = loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer sometoken", map[string]string{
 		"dashboard": "anotherdashboard",
 	})
+	defer res.Body.Close()
 	require.Equal(t, 403, res.StatusCode)
 }
 
