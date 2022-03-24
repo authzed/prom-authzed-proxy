@@ -32,13 +32,13 @@ See [CONTRIBUTING.md] for instructions on how to contribute and perform common t
 If you're using a modern version of [Go], run the following command to install:
 
 ```sh
-go install github.com/authzed/prom-authzed-proxy
+go install github.com/authzed/prom-authzed-proxy/cmd/prom-authzed-proxy
 ```
 
 If you want a container of the proxy and have [docker] installed:
 
 ```sh
-docker pull ghcr.io/authzed/prom-authzed-proxy:latest
+docker pull authzed/prom-authzed-proxy:latest
 ```
 
 [Go]: https://golang.org/dl/
@@ -52,10 +52,10 @@ The following command will run the proxy that checks the permissions against [au
 prom-authzed-proxy \
     --proxy-upstream-prometheus-addr http://localhost:9090 \
     --proxy-spicedb-token tc_client_token_1234deadbeef  \
-    --proxy-check-resource-type psystem/prometheus \
+    --proxy-check-resource-type metric \
     --proxy-check-resource-id-query-param install \
     --proxy-check-permission view
-    --proxy-check-subject-type psystem/token \
+    --proxy-check-subject-type token \
 ```
 
 Each request is checked to have a value as a [Bearer Token] that has the `view` permission for the resource specified in the PromQL label `install` with their respective types.
