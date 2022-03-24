@@ -3,23 +3,23 @@ name: "Release"
 on:  # yamllint disable-line rule:truthy
   push:
     tags:
-    - "v*"
+      - "v*"
 jobs:
   docker:
     name: "Publish Container Image"
     runs-on: "ubuntu-latest"
     steps:
-    - uses: "actions/checkout@v3"
-    - uses: "battila7/get-version-action@v2"
-      id: "get_version"
-    - uses: "authzed/actions/docker-login@main"
-    - uses: "authzed/actions/docker-build@main"
-      with:
-        push: "true"
-        tags: |
-          authzed/prom-authzed-proxy:latest
-          authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
-          ghcr.io/authzed/prom-authzed-proxy:latest
-          ghcr.io/authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
-          quay.io/authzed/prom-authzed-proxy:latest
-          quay.io/authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
+      - uses: "actions/checkout@v3"
+      - uses: "battila7/get-version-action@v2"
+        id: "get_version"
+      - uses: "authzed/actions/docker-login@main"
+      - uses: "authzed/actions/docker-build@main"
+        with:
+          push: "true"
+          tags: |
+            authzed/prom-authzed-proxy:latest
+            authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
+            ghcr.io/authzed/prom-authzed-proxy:latest
+            ghcr.io/authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
+            quay.io/authzed/prom-authzed-proxy:latest
+            quay.io/authzed/prom-authzed-proxy:${{ steps.get_version.outputs.version }}
