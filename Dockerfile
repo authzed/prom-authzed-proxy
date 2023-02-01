@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 RUN go build ./cmd/...
 
-FROM alpine:3.15.0
+FROM alpine:3.17.1
 CMD ["prom-authzed-proxy"]
 ENTRYPOINT ["prom-authzed-proxy"]
 COPY --from=builder /go/src/app/prom-authzed-proxy /usr/local/bin
