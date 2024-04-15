@@ -12,8 +12,8 @@ jobs:
     name: "Lint Go"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
-      - uses: "actions/setup-go@v3"
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-go@v5"
         with:
           go-version: "^1.17"
       - uses: "authzed/actions/gofumpt@main"
@@ -25,7 +25,7 @@ jobs:
     name: "Lint YAML & Markdown"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
+      - uses: "actions/checkout@v4"
       - uses: "authzed/actions/yaml-lint@main"
       - uses: "authzed/actions/markdown-lint@main"
 
@@ -41,5 +41,5 @@ jobs:
       matrix:
         language: ["go"]
     steps:
-      - uses: "actions/checkout@v3"
+      - uses: "actions/checkout@v4"
       - uses: "authzed/actions/codeql@main"

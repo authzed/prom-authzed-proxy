@@ -9,7 +9,7 @@ jobs:
     name: "Publish Container Image"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
+      - uses: "actions/checkout@v4"
       - uses: "battila7/get-version-action@v2"
         id: "get_version"
       - uses: "authzed/actions/docker-login@main"
