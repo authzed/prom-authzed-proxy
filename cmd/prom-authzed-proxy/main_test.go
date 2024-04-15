@@ -28,7 +28,7 @@ type catchallHandler struct {
 	t *testing.T
 }
 
-func (ah catchallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (ah catchallHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "should never appear")
 	w.Header().Add("Another-Header", "hiya")
 	w.Header().Add("Another-Header", "hello")
@@ -38,7 +38,9 @@ func (ah catchallHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func TestMissingQueryParameter(t *testing.T) {
 	_, serverURL := startForTesting(t)
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "", map[string]string{})
-	defer res.Body.Close()
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
 	require.Equal(t, 401, res.StatusCode)
 }
 
@@ -47,7 +49,9 @@ func TestMissingAuthHeader(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "", map[string]string{
 		"dashboard": "foobar",
 	})
-	defer res.Body.Close()
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
 	require.Equal(t, 401, res.StatusCode)
 }
 
@@ -56,7 +60,9 @@ func TestInvalidAuthHeader(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Basic Foo", map[string]string{
 		"dashboard": "foobar",
 	})
-	defer res.Body.Close()
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
 	require.Equal(t, 401, res.StatusCode)
 }
 
@@ -65,7 +71,9 @@ func TestInvalidToken(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer sometoken", map[string]string{
 		"dashboard": "foobar",
 	})
-	defer res.Body.Close()
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
 	require.Equal(t, 403, res.StatusCode)
 }
 
@@ -103,7 +111,9 @@ func TestValidToken(t *testing.T) {
 	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer sometoken", map[string]string{
 		"dashboard": "foobar",
 	})
-	defer res.Body.Close()
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
 	require.Equal(t, 418, res.StatusCode)
 
 	// Ensure the ACAO was reset, but other headers are passed through.
@@ -114,30 +124,30 @@ func TestValidToken(t *testing.T) {
 	res = loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer anothertoken", map[string]string{
 		"dashboard": "foobar",
 	})
-	defer res.Body.Close()
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
 	require.Equal(t, 403, res.StatusCode)
 
 	// Check for another dashboard
 	res = loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer sometoken", map[string]string{
 		"dashboard": "anotherdashboard",
 	})
-	defer res.Body.Close()
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
 	require.Equal(t, 403, res.StatusCode)
 }
 
 func startForTesting(t *testing.T) (*authzedv1.Client, string) {
-	tester, err := newTester(zedTestServerContainer, 50051)
+	tester, err := newTester(t, zedTestServerContainer, 50051)
 	require.NoError(t, err)
 	t.Cleanup(tester.cleanup)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", catchallHandler{t})
 
-	var opts []grpc.DialOption
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-	client, err := authzedv1.NewClient(fmt.Sprintf("localhost:%s", tester.port), opts...)
-	require.NoError(t, err)
+	client := tester.client
 
 	handler := proxyHandler(
 		client,
@@ -179,21 +189,19 @@ func loadURL(t *testing.T, method string, callURL string, authHeader string, par
 }
 
 type testHandle struct {
-	port    string
+	client  *authzedv1.Client
 	cleanup func()
 }
 
-const maxAttempts = 5
-
-func newTester(containerOpts *dockertest.RunOptions, portNum uint16) (*testHandle, error) {
+func newTester(t *testing.T, containerOpts *dockertest.RunOptions, portNum uint16) (*testHandle, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		return nil, fmt.Errorf("Could not connect to docker: %w", err)
+		return nil, fmt.Errorf("could not connect to docker: %w", err)
 	}
 
 	resource, err := pool.RunWithOptions(containerOpts)
 	if err != nil {
-		return nil, fmt.Errorf("Could not start resource: %w", err)
+		return nil, fmt.Errorf("could not start resource: %w", err)
 	}
 
 	port := resource.GetPort(fmt.Sprintf("%d/tcp", portNum))
@@ -206,39 +214,31 @@ func newTester(containerOpts *dockertest.RunOptions, portNum uint16) (*testHandl
 	}
 
 	// Give the service time to boot.
-	counter := 0
-	for {
-		time.Sleep(10 * time.Millisecond)
 
+	var client *authzedv1.Client
+	require.Eventually(t, func() bool {
 		var opts []grpc.DialOption
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 		// Create an Authzed client
-		client, err := authzedv1.NewClient(fmt.Sprintf("localhost:%s", port), opts...)
+		client, err = authzedv1.NewClient(fmt.Sprintf("localhost:%s", port), opts...)
 		if err != nil {
-			return nil, fmt.Errorf("Could not create client: %w", err)
+			return false
 		}
 
 		// Write a basic schema.
 		_, err = client.WriteSchema(context.Background(), &v1.WriteSchemaRequest{
 			Schema: `definition test/token {}
 
-definition test/dashboard {
-	relation viewer: test/token
-	permission view = viewer
-}
-`,
-		})
-		if err != nil {
-			counter++
-			if counter > maxAttempts {
-				return nil, fmt.Errorf("Failed to start container: %w", err)
+			definition test/dashboard {
+				relation viewer: test/token
+				permission view = viewer
 			}
-			continue
-		}
+			`,
+		})
 
-		// Wait for schema to be available
-		time.Sleep(50 * time.Millisecond)
-		return &testHandle{port: port, cleanup: cleanup}, nil
-	}
+		return err == nil
+	}, 30*time.Second, 100*time.Millisecond)
+
+	return &testHandle{client: client, cleanup: cleanup}, nil
 }
