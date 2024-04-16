@@ -158,12 +158,13 @@ func rootRunE(cmd *cobra.Command, args []string) error {
 		log.Fatal().Err(err).Msg("could not create Authzed client")
 	}
 
-	proxy := logHandler(cors.New(cors.Options{
+	corsBuilder := cors.New(cors.Options{
 		AllowedOrigins:   cobrautil.MustGetStringSlice(cmd, "proxy-cors-allowed-origins"),
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"Authorization"},
 		Debug:            log.Debug().Enabled(),
-	}).Handler(proxyHandler(
+	})
+	proxy := logHandler(corsBuilder.Handler(proxyHandler(
 		authzedClient,
 		labelProxyHandler,
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-resource-type"),
