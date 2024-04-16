@@ -15,35 +15,60 @@ import (
 	v1pb "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	"github.com/authzed/authzed-go/v1"
 	"github.com/authzed/grpcutil"
-	"github.com/jzelinskie/cobrautil"
+	"github.com/go-logr/zerologr"
+	"github.com/jzelinskie/cobrautil/v2"
+	"github.com/jzelinskie/cobrautil/v2/cobrahttp"
+	"github.com/jzelinskie/cobrautil/v2/cobraotel"
+	"github.com/jzelinskie/cobrautil/v2/cobrazerolog"
 	"github.com/jzelinskie/stringz"
 	"github.com/prometheus-community/prom-label-proxy/injectproxy"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+func metricsServerBuilder() *cobrahttp.Builder {
+	return cobrahttp.New("metrics",
+		cobrahttp.WithLogger(zerologr.New(&log.Logger)),
+		cobrahttp.WithDefaultEnabled(true),
+		cobrahttp.WithDefaultAddress(":9091"),
+		cobrahttp.WithFlagPrefix("metrics"),
+		cobrahttp.WithHandler(metricsHandler()),
+	)
+}
+
+func proxyBuilder(options ...cobrahttp.Option) *cobrahttp.Builder {
+	return cobrahttp.New("proxy",
+		append(options,
+			cobrahttp.WithLogger(zerologr.New(&log.Logger)),
+			cobrahttp.WithDefaultEnabled(true),
+			cobrahttp.WithDefaultAddress(":443"),
+			cobrahttp.WithFlagPrefix("proxy"))...,
+	)
+}
+
 func main() {
+	czerolog := cobrazerolog.New(cobrazerolog.WithFlagPrefix("log"))
+	cotel := cobraotel.New("telemetry-proxy", cobraotel.WithFlagPrefix("otel"))
 	rootCmd := &cobra.Command{
 		Use:     "prom-authzed-proxy",
 		Short:   "Proxy that protects Prometheus queries with SpiceDB",
 		PreRunE: cobrautil.SyncViperPreRunE("prom-authzed-proxy"),
 		RunE: cobrautil.CommandStack(
-			cobrautil.ZeroLogRunE("log", zerolog.InfoLevel),
-			cobrautil.OpenTelemetryRunE("otel", zerolog.InfoLevel),
+			czerolog.RunE(),
+			cotel.RunE(),
 			rootRunE,
 		),
 	}
 
-	cobrautil.RegisterZeroLogFlags(rootCmd.Flags(), "log")
-	cobrautil.RegisterOpenTelemetryFlags(rootCmd.Flags(), "otel", "prom-authzed-proxy")
-	cobrautil.RegisterHTTPServerFlags(rootCmd.Flags(), "metrics", "metrics", ":9091", true)
+	czerolog.RegisterFlags(rootCmd.PersistentFlags())
+	cotel.RegisterFlags(rootCmd.PersistentFlags())
+	metricsServerBuilder().RegisterFlags(rootCmd.Flags())
+	proxyBuilder().RegisterFlags(rootCmd.Flags())
 
-	cobrautil.RegisterHTTPServerFlags(rootCmd.Flags(), "proxy", "proxy", ":9090", true)
 	rootCmd.Flags().StringSlice("proxy-cors-allowed-origins", []string{"*"}, "allowed origins for CORS requests")
 
 	rootCmd.Flags().String("proxy-upstream-prometheus-addr", "", "address of the upstream Prometheus")
@@ -87,9 +112,17 @@ func spiceDBAuthnDialOpts(token, optionalCertPath string, insecureConn bool) (op
 		opts = append(opts, grpcutil.WithInsecureBearerToken(token))
 	} else {
 		if optionalCertPath != "" {
-			opts = append(opts, grpcutil.WithCustomCerts(optionalCertPath, grpcutil.VerifyCA))
+			cert, err := grpcutil.WithCustomCerts(grpcutil.VerifyCA, optionalCertPath)
+			if err != nil {
+				log.Fatal().Err(err).Msg("failed to load custom certs")
+			}
+			opts = append(opts, cert)
 		} else {
-			opts = append(opts, grpcutil.WithSystemCerts(grpcutil.VerifyCA))
+			certs, err := grpcutil.WithSystemCerts(grpcutil.VerifyCA)
+			if err != nil {
+				log.Fatal().Err(err).Msg("failed to load system certs")
+			}
+			opts = append(opts, certs)
 		}
 		opts = append(opts, grpcutil.WithBearerToken(token))
 	}
@@ -125,9 +158,7 @@ func rootRunE(cmd *cobra.Command, args []string) error {
 		log.Fatal().Err(err).Msg("could not create Authzed client")
 	}
 
-	const proxyPrefix = "proxy"
-	proxySrv := cobrautil.HTTPServerFromFlags(cmd, proxyPrefix)
-	proxySrv.Handler = logHandler(cors.New(cors.Options{
+	proxy := logHandler(cors.New(cors.Options{
 		AllowedOrigins:   cobrautil.MustGetStringSlice(cmd, "proxy-cors-allowed-origins"),
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"Authorization"},
@@ -141,22 +172,36 @@ func rootRunE(cmd *cobra.Command, args []string) error {
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-subject-type"),
 		cobrautil.MustGetStringExpanded(cmd, "proxy-check-subject-relation"),
 	)))
-	go func() {
-		if err := cobrautil.HTTPListenFromFlags(cmd, proxyPrefix, proxySrv, zerolog.InfoLevel); err != nil {
-			log.Fatal().Err(err).Msg("failed while serving proxy")
-		}
-	}()
-	defer proxySrv.Close()
 
-	const metricsPrefix = "metrics"
-	metricsSrv := cobrautil.HTTPServerFromFlags(cmd, metricsPrefix)
-	metricsSrv.Handler = metricsHandler()
+	builder := proxyBuilder(cobrahttp.WithHandler(proxy))
+	proxyServer := builder.ServerFromFlags(cmd)
 	go func() {
-		if err := cobrautil.HTTPListenFromFlags(cmd, metricsPrefix, metricsSrv, zerolog.InfoLevel); err != nil {
-			log.Fatal().Err(err).Msg("failed while serving metrics")
+		err := builder.ListenFromFlags(cmd, proxyServer)
+		if err != nil {
+			log.Error().Err(err).Msg("failed while serving proxy")
 		}
 	}()
-	defer metricsSrv.Close()
+	defer func(proxySrv *http.Server) {
+		err := proxySrv.Close()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("failed to close proxy server")
+		}
+	}(proxyServer)
+
+	metricsBuilder := metricsServerBuilder()
+	metricsServer := metricsBuilder.ServerFromFlags(cmd)
+	go func() {
+		err := metricsBuilder.ListenFromFlags(cmd, metricsServer)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error().Err(err).Msg("failed while serving metrics")
+		}
+	}()
+	defer func(metricsSrv *http.Server) {
+		err := metricsSrv.Close()
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to close metrics server")
+		}
+	}(metricsServer)
 
 	signalctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	<-signalctx.Done() // Block until we've received a signal.
