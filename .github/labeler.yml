@@ -1,14 +1,26 @@
 ---
-area/dependencies:
-  - "Dockerfile"
-  - "go.mod"
-  - "go.sum"
-area/tooling:
-  - ".github/**/*"
-  - "Dockerfile"
-area/docs:
-  - "CODE-OF-CONDUCT.md"
-  - "CONTRIBUTING.md"
-  - "DCO"
-  - "LICENSE"
-  - "README.md"
+"area/dependencies":
+  - changed-files:
+      - any-glob-to-any-file:
+          [
+            "Dockerfile",
+            "go.mod",
+            "go.sum",
+          ]
+"area/tooling":
+  - changed-files:
+      - any-glob-to-any-file:
+          [
+            ".github/**/*",
+            "Dockerfile",
+          ]
+"area/docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          [
+            "CODE-OF-CONDUCT.md",
+            "CONTRIBUTING.md",
+            "DCO",
+            "LICENSE",
+            "README.md",
+          ]
