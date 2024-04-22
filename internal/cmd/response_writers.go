@@ -1,8 +1,9 @@
-package main
+package cmd
 
 import (
 	"bytes"
 	"net/http"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 )
@@ -51,6 +52,7 @@ func (w filteredWriter) Write(b []byte) (int, error) {
 // logWriter wraps an http.ResponseWriter and logs the request and response
 // metadata.
 type logWriter struct {
+	sync.Mutex
 	status int
 	body   *bytes.Buffer
 	http.ResponseWriter
@@ -65,21 +67,29 @@ func (w *logWriter) WriteHeader(statusCode int) {
 }
 
 func (w *logWriter) Write(b []byte) (int, error) {
+	w.Lock()
+	defer w.Unlock()
+
 	w.body = bytes.NewBuffer(b)
 	return w.ResponseWriter.Write(b)
 }
 
 func logHandler(fn http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		lw := &logWriter{0, nil, w}
+		lw := &logWriter{sync.Mutex{}, 0, nil, w}
 		fn.ServeHTTP(lw, r)
+
+		lw.Lock()
+		bodyString := lw.body.String()
+		lw.Unlock()
+
 		log.Info().
 			Int("status", lw.status).
 			Str("method", r.Method).
 			Str("path", r.RequestURI).
 			Str("ip", r.RemoteAddr).
 			Interface("headers", r.Header).
-			Str("response", lw.body.String()).
+			Str("response", bodyString).
 			Msg("handled request")
 	})
 }

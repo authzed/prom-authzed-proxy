@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -53,6 +53,17 @@ func TestMissingAuthHeader(t *testing.T) {
 		require.NoError(t, res.Body.Close())
 	}()
 	require.Equal(t, 401, res.StatusCode)
+}
+
+func TestMissingResourceIDParameter(t *testing.T) {
+	_, serverURL := startForTesting(t)
+	res := loadURL(t, "GET", fmt.Sprintf("%s/something", serverURL), "Bearer sometoken", map[string]string{
+		"dashboard": "",
+	})
+	defer func() {
+		require.NoError(t, res.Body.Close())
+	}()
+	require.Equal(t, 400, res.StatusCode)
 }
 
 func TestInvalidAuthHeader(t *testing.T) {
@@ -149,7 +160,7 @@ func startForTesting(t *testing.T) (*authzedv1.Client, string) {
 
 	client := tester.client
 
-	handler := proxyHandler(
+	handler := logHandler(proxyHandler(
 		client,
 		mux,
 		"test/dashboard",
@@ -157,7 +168,7 @@ func startForTesting(t *testing.T) (*authzedv1.Client, string) {
 		"view",
 		"test/token",
 		"",
-	)
+	))
 
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
